@@ -1,0 +1,249 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Parameters": {
+      "PipelineName": {
+          "Description": "A name for pipeline",
+          "Type": "String"
+      },
+      "S3Bucket": {
+          "Description": "The name of the S3 bucket that contains the source artifact, which must be in the same region as this stack",
+          "Type": "String"
+      },
+      "SourceS3Key": {
+          "Default": "test.zip",
+          "Description": "The file name of the source artifact, such as myfolder/myartifact.zip",
+          "Type": "String"
+      },
+      "TemplateFileName": {
+          "Default": "sampleEC2.yaml",
+          "Description": "The file name of the template",
+          "Type": "String"
+      },
+      "TargetRegion": {
+          "Default": "us-west-2",
+          "Description": "Target region where you want the stack to be deployed",
+          "Type": "String"
+      },
+      "TestStackConfig": {
+          "Default": "test-stack-configuration.json",
+          "Description": "The configuration file name for the stack",
+          "Type": "String"
+      },
+      "StackName": {
+          "Default": "TestCrossRegionPiepline",
+          "Description": "The name of the CloudFormation that has to be created or updated by the Pipeline",
+          "Type": "String"
+      },
+      "ArtifactStoreBucketTargetRegion": {
+          "Description": "Name of the S3 Bucket that exists in the Target region",
+          "Type": "String"
+      }
+  },
+  "Resources": {
+    "ArtifactStoreBucket": {
+        "DeletionPolicy": "Retain",
+        "Type": "AWS::S3::Bucket",
+        "Properties": {
+            "VersioningConfiguration": {
+                "Status": "Enabled"
+            }
+        }
+    },
+    "CrossRegionPipeline": {
+      "Type": "AWS::CodePipeline::Pipeline",
+      "Properties": {
+        "Name": {
+          "Ref": "PipelineName"
+        },
+        "RoleArn": {
+          "Fn::GetAtt": [
+            "PipelineRole",
+            "Arn"
+          ]
+        },
+        "Stages": [
+          {
+            "Name": "S3Source",
+            "Actions": [{
+              "Name": "TemplateSource",
+              "ActionTypeId": {
+                "Category": "Source",
+                "Owner": "AWS",
+                "Provider": "S3",
+                "Version": "1"
+              },
+              "Configuration": {
+                "S3Bucket": {
+                  "Ref": "S3Bucket"
+                },
+                "S3ObjectKey": {
+                  "Ref": "SourceS3Key"
+                }
+              },
+              "OutputArtifacts": [{
+                "Name": "TemplateSource"
+              }],
+              "RunOrder": "1"
+            }]
+          },
+          {
+            "Name": "Deploy",
+            "Actions": [
+              {
+              "Name": "CreateUpdateStack",
+              "ActionTypeId": {
+                "Category": "Deploy",
+                "Owner": "AWS",
+                "Provider": "CloudFormation",
+                "Version": "1"
+              },
+              "InputArtifacts": [{
+                "Name": "TemplateSource"
+              }],
+              "Configuration": {
+                "ActionMode": "CREATE_UPDATE",
+                "RoleArn": {
+                    "Fn::GetAtt": [
+                        "CFNRole",
+                        "Arn"
+                    ]
+                },
+                "StackName": {
+                  "Ref": "StackName"
+                },
+                "TemplateConfiguration": {
+                    "Fn::Sub": "TemplateSource::${TestStackConfig}"
+                },
+                "TemplatePath": {
+                  "Fn::Sub": "TemplateSource::${TemplateFileName}"
+                }
+              },
+              "Region": {
+                "Ref": "TargetRegion"
+              },
+              "RunOrder": "1"
+            }
+          ]
+          }
+        ],
+        "ArtifactStores": [
+          {
+            "ArtifactStore": {
+              "Type": "S3",
+              "Location": { "Ref": "ArtifactStoreBucket" }
+            },
+            "Region": {
+               "Ref": "AWS::Region"
+             }
+          },
+          {
+            "ArtifactStore": {
+              "Type": "S3",
+              "Location": {
+                 "Ref": "ArtifactStoreBucketTargetRegion"
+               }
+            },
+            "Region": {
+              "Ref": "TargetRegion"
+            }
+          }
+        ]
+
+      }
+    },
+    "PipelineRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [{
+            "Action": [
+              "sts:AssumeRole"
+            ],
+            "Effect": "Allow",
+            "Principal": {
+              "Service": [
+                "codepipeline.amazonaws.com"
+              ]
+            }
+          }],
+          "Version": "2012-10-17"
+        },
+        "Path": "/",
+        "Policies": [{
+          "PolicyName": "CodePipelineAccess",
+          "PolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Action": [
+                "s3:*",
+                "cloudformation:CreateStack",
+                "cloudformation:DescribeStacks",
+                "cloudformation:DeleteStack",
+                "cloudformation:UpdateStack",
+                "cloudformation:CreateChangeSet",
+                "cloudformation:ExecuteChangeSet",
+                "cloudformation:DeleteChangeSet",
+                "cloudformation:DescribeChangeSet",
+                "cloudformation:SetStackPolicy",
+                "iam:PassRole",
+                "sns:Publish"
+              ],
+              "Effect": "Allow",
+              "Resource": "*"
+            }]
+          }
+        }]
+      }
+    },
+
+    "CFNRole": {
+        "Type": "AWS::IAM::Role",
+        "Properties": {
+            "AssumeRolePolicyDocument": {
+                "Statement": [
+                    {
+                        "Action": [
+                            "sts:AssumeRole"
+                        ],
+                        "Effect": "Allow",
+                        "Principal": {
+                            "Service": [
+                                "cloudformation.amazonaws.com"
+                            ]
+                        }
+                    }
+                ],
+                "Version": "2012-10-17"
+            },
+            "Path": "/",
+            "ManagedPolicyArns" : [ "arn:aws:iam::aws:policy/AmazonEC2FullAccess","arn:aws:iam::aws:policy/AmazonS3FullAccess" ]
+        }
+    }
+  },
+  "Outputs": {
+       "ArtifactS3Bucket": {
+           "Description": "ArtifactBucket created for the current region",
+           "Value": {
+               "Ref": "ArtifactStoreBucket"
+           }
+       },
+       "CodepipelineName": {
+           "Description": "Name of the Pipeline",
+           "Value": {
+               "Ref": "CrossRegionPipeline"
+           }
+       },
+       "CodePipelineServiceRole": {
+           "Description": "Service Role used by CodePipeline",
+           "Value": {
+               "Ref": "PipelineRole"
+           }
+       },
+       "CloudFormationServiceRole": {
+           "Description": "Service Role used by CloudFormation to deploy cross region stack",
+           "Value": {
+               "Ref": "CFNRole"
+           }
+       }
+   }
+}
