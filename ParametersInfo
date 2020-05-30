@@ -1,0 +1,16 @@
+PipelineName -> Name of the Pipeline to be created. Make sure you do not have a Pipeline that already exists with the same name.
+
+S3Bucket - Name of the S3 bucket where we will be storing our source code Zip File i.e CodepipelineCrossRegion.zip .
+
+SourceS3Key - If you are adding the Zip file to the root of the S3 bucket, you can just mention name of the Zip file (CodepipelineCrossRegion.zip). However, if you are adding the inside a folder in the S3 bucket , you would have to provide the complete path. For example if you have added the CodepipelineCrossRegion.zip to a folder called 'CodePipeline' in the S3 bucket, enter the value for this parameter as CodePipeline/CodepipelineCrossRegion.zip .
+
+TemplateFileName - Name of the template file in the source code (it can be a JSON or YAML file). For example sampleEC2.yaml.
+
+TargetRegion - The region where you would like CodePipeline to deploy the CloudFormation stack. For example us-west-2.
+
+TestStackConfig - The name of the file containing the information about the parameters to be passed to the cross region stack. For example parameter-configuration.json.
+
+StackName - Name of the Cross Region stack that would be deployed using CodePipeline.
+
+ArtifactStoreBucketTargetRegion - Name of the bucket in the target region where the artifacts would be stored by CodePipeline. In my case it would be an S3 bucket in us-west-2 region.
+
