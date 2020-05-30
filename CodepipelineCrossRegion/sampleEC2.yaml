@@ -1,0 +1,30 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Creating a Simple EC2 instance
+Parameters:
+  KeyPair:
+    Default: new_keypair
+    Description: Name of the Keypair to SSH into the EC2 instance
+    Type: String
+  ImageID:
+    Default: ami-0915e09cc7ceee3ab
+    Description: AMI ID to launch the EC2 instance
+    Type: String
+  InstanceType:
+    Default: t2.micro
+    Description: Instance type to be used
+    Type: String
+  SecurityGroup:
+    Description: List of security group IDs for the instances
+    Type: String
+Resources:
+  MyEC2:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      KeyName: !Ref KeyPair
+      ImageId: !Ref ImageID
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref SecurityGroup
+      Tags:
+        - Key: Name
+          Value: SampleEC2
