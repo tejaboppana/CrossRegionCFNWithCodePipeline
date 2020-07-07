@@ -3,6 +3,6 @@
     "KeyPair" : "OregonKeypairTeja",
     "ImageID" : "ami-01f08ef3e76b957e5",
     "InstanceType" : "t2.micro",
-    "SecurityGroup" : "sg-0352847f1f7a11d95"
+    "SecurityGroup" : "sg-0343352847f1f7a11d95"
   }
 }
